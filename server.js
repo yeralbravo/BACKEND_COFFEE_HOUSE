@@ -40,7 +40,8 @@ const __dirname = path.dirname(__filename);
 const app = express();
 
 const corsOptions = {
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    // 💡 La URL de tu bucket de S3 se establece como el origen permitido.
+    origin: 'http://coffeehouse25.s3-website.us-east-2.amazonaws.com', 
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
