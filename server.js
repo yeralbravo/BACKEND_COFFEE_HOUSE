@@ -18,7 +18,7 @@ import reviewRoutes from './routes/reviewRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import searchRoutes from './routes/searchRoutes.js';
 import supplierRoutes from './routes/supplierRoutes.js';
-import supplierRequestRoutes from './routes/supplierRequestRoutes.js'; 
+import supplierRequestRoutes from './routes/supplierRequestRoutes.js';
 import contactRoutes from './routes/contactRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import cartRoutes from './routes/cartRoutes.js';
@@ -41,7 +41,7 @@ const app = express();
 
 const corsOptions = {
     // 💡 La URL de tu bucket de S3 se establece como el origen permitido.
-    origin: 'http://coffeehouse25.s3-website.us-east-2.amazonaws.com', 
+    origin: 'http://coffeehouse25.s3-website.us-east-2.amazonaws.com',
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
