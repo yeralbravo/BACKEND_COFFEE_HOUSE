@@ -39,15 +39,32 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
+// 💡 Configuración de CORS dinámica
+const allowedOrigins = [
+    // Origen de desarrollo local
+    'http://localhost:5173',
+    // Origen del frontend desplegado en Render (el que te da el error)
+    'https://frontend-coffee-house.onrender.com',
+    // Si tienes un segundo despliegue, añádelo aquí
+    process.env.FRONTEND_URL,
+    'http://coffeehouse25.s3-website.us-east-2.amazonaws.com'
+];
+
 const corsOptions = {
-    // 💡 La URL de tu bucket de S3 se establece como el origen permitido.
-    origin: 'http://coffeehouse25.s3-website.us-east-2.amazonaws.com',
+    origin: (origin, callback) => {
+        // Permitir solicitudes sin origen (como las de un cliente REST) o si el origen está en la lista de permitidos
+        if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            callback(new Error('No permitido por CORS'));
+        }
+    },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
 };
-app.use(cors(corsOptions));
 
+app.use(cors(corsOptions));
 
 app.use(helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" },
