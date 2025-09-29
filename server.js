@@ -23,72 +23,69 @@ import contactRoutes from './routes/contactRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import cartRoutes from './routes/cartRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
-import addressRoutes from './routes/addressRoutes.js';
-import itemRoutes from './routes/itemRoutes.js';
+import addressRoutes from './routes/addressRoutes.js'; // Importación añadida/mantenida
+import itemRoutes from './routes/itemRoutes.js';       // Importación añadida/mantenida
 
 dotenv.config();
 
-// =======================================================
-// CONFIGURACIÓN PARA ES MODULES (import/export)
-// Necesario para poder usar __dirname con módulos de ES
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-// =======================================================
-
-// Manejo de promesas no manejadas (unhandled rejections)
 process.on('unhandledRejection', (err, promise) => {
     console.error(`ALERTA: Error de Promesa no Manejado: ${err.message}`, err);
-    // En un entorno de producción, podrías querer apagar el servidor aquí.
 });
+process.on('uncaughtException', (err) => {
+    console.error(`ERROR CRÍTICO: Error no Capturado: ${err.message}`, err);
+    process.exit(1);
+});
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 
-// Seguridad con Helmet: ayuda a proteger la aplicación de vulnerabilidades conocidas.
-app.use(helmet());
+// ====================================================================
+// 💡 CONFIGURACIÓN DE CORS ADAPTADA
+// ====================================================================
 
-// Configuración de CORS para permitir la comunicación con el frontend
-const allowedOrigins = ['http://localhost:5173', process.env.FRONTEND_URL];
+// Orígenes permitidos (incluyendo los de Render y la variable de entorno)
+const allowedOrigins = [
+    // Origen de desarrollo local
+    'http://localhost:5173',
+    // Origen del frontend desplegado en Render (Ejemplo)
+    'https://frontend-coffeehouse.onrender.com', 
+    // Variable de entorno (se recomienda usar esta en Render)
+    process.env.FRONTEND_URL,
+    // Origen alternativo de despliegue si existe (ej. S3)
+    'http://coffeehouse25.s3-website.us-east-2.amazonaws.com'
+];
 
 const corsOptions = {
-    origin: function (origin, callback) {
-        // Permitir peticiones sin 'origin' (como apps móviles o curl)
-        if (!origin) return callback(null, true);
-        if (allowedOrigins.indexOf(origin) !== -1) {
+    origin: (origin, callback) => {
+        // Si no hay origen (ej. curl o cliente REST), o si el origen está en la lista de permitidos
+        if (!origin || allowedOrigins.includes(origin)) {
             callback(null, true);
         } else {
-            callback(new Error('No permitido por CORS'), false);
+            callback(new Error('No permitido por CORS'));
         }
     },
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
-    optionsSuccessStatus: 200 
 };
 
 app.use(cors(corsOptions));
 
-// Limitador de tasa (Rate Limiter) para prevenir ataques de fuerza bruta/DoS
-const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutos
-    max: 100, // Límite de 100 peticiones por IP
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: 'Demasiadas peticiones desde esta IP, por favor intenta de nuevo después de 15 minutos.'
-});
+// ====================================================================
+// FIN CONFIGURACIÓN DE CORS
+// ====================================================================
 
-app.use(limiter);
+app.use(helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+}));
 
-// Middlewares de parseo (body-parser)
-// Se aumenta el límite de tamaño de payload para manejar subidas de imágenes (5mb)
 app.use(bodyParser.json({ limit: '5mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '5mb' }));
-
-// Servir archivos estáticos de uploads
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Rutas de la API
-// ************************************************************
-// Todas las rutas están correctamente montadas bajo /api/*
-// ************************************************************
+// Rutas de la API (Se mantienen tus rutas originales)
 app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/products', productRoutes);
@@ -104,8 +101,8 @@ app.use('/api/contact', contactRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/payment', paymentRoutes);
-app.use('/api/addresses', addressRoutes);
-app.use('/api/items', itemRoutes);
+app.use('/api/addresses', addressRoutes); // Ruta añadida/mantenida
+app.use('/api/items', itemRoutes);       // Ruta añadida/mantenida
 
 // Middleware para rutas no encontradas (404)
 app.use((req, res, next) => {
@@ -115,24 +112,13 @@ app.use((req, res, next) => {
 // Middleware manejador de errores final y global
 app.use((err, req, res, next) => {
     console.error('Error capturado por el manejador global:', err.stack);
-
-    const statusCode = err.status || 500;
-    let errorMessage = err.message || 'Error interno del servidor';
-    
-    // Manejo de errores específicos de JWT
-    if (err.name === 'UnauthorizedError' || err.name === 'JsonWebTokenError') {
-        errorMessage = 'Token no válido o expirado.';
-        return res.status(401).json({ success: false, error: errorMessage });
-    }
-
-    res.status(statusCode).json({
+    res.status(err.status || 500).json({
         success: false,
-        error: errorMessage,
-        // Puedes descomentar para ver el stack en desarrollo
-        // stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+        error: err.message || 'Error interno del servidor',
     });
 });
 
 const PORT = process.env.PORT || 5000;
-
-app.listen(PORT, () => console.log(`Servidor corriendo en el puerto ${PORT}`));
+const server = app.listen(PORT, () => {
+    console.log(`✅ Servidor corriendo en el puerto ${PORT}`);
+});
