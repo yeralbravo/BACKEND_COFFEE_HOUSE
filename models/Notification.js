@@ -17,11 +17,15 @@ export const findNotificationsByUserId = async (userId) => {
         // Establece el idioma a español para los nombres de los meses
         await db.query("SET lc_time_names = 'es_ES'");
 
-        // Selecciona la fecha original y la fecha ya formateada
+        // === CORRECCIÓN DE LA SINTAXIS DE DATE_FORMAT ===
+        // Se utilizan barras invertidas (\) para escapar el texto literal "de" y evitar el error "Unknown column".
+        // Los signos de porcentaje (%) siguen el formato MySQL.
         const [notifications] = await db.query(
-            'SELECT id, message, link_url, is_read, created_at, DATE_FORMAT(created_at, "%d de %M de %Y") as formatted_date FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 20',
+            'SELECT id, message, link_url, is_read, created_at, DATE_FORMAT(created_at, "%d \\de %M \\de %Y") as formatted_date FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 20',
             [userId]
         );
+        // ===============================================
+
         return notifications;
     } catch (error) {
         console.error('Error al obtener notificaciones:', error);
@@ -60,7 +64,8 @@ export const createNotificationForAllAdmins = async (message, linkUrl = null) =>
         const adminIds = await findAllAdminIds();
         if (adminIds.length === 0) return;
 
-        const notifications = adminIds.map(adminId => [adminId, message, linkUrl]);
+        // Mapea las IDs a un array de arrays para el INSERT múltiple
+        const notifications = adminIds.map(id => [id, message, linkUrl]);
         
         await db.query(
             'INSERT INTO notifications (user_id, message, link_url) VALUES ?',
