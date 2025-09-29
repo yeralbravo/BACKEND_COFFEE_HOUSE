@@ -50,7 +50,8 @@ const allowedOrigins = [
     // Origen de desarrollo local
     'http://localhost:5173',
     // Origen del frontend desplegado en Render (Ejemplo)
-    'https://frontend-coffeehouse.onrender.com', 
+    'https://frontend-coffee-house.onrender.com', 
+    
     // Variable de entorno (se recomienda usar esta en Render)
     process.env.FRONTEND_URL,
     // Origen alternativo de despliegue si existe (ej. S3)
