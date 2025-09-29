@@ -77,6 +77,33 @@ app.use('/api/payment', paymentRoutes);
 app.use('/api/addresses', addressRoutes); 
 app.use('/api/items', itemRoutes);
 
+
+// ====================================================================
+// CRÍTICO PARA RENDER: Servir archivos del Frontend (React/Vite)
+// ====================================================================
+if (process.env.NODE_ENV === 'production') {
+    console.log('Modo Producción: Sirviendo Frontend');
+    
+    // **Ajusta esta ruta** si tu carpeta 'dist' no está en 'frontend/dist' 
+    // respecto a la raíz de tu backend.
+    const frontendDistPath = path.join(__dirname, 'frontend', 'dist'); 
+    
+    // Servir archivos estáticos del build de Vite
+    app.use(express.static(frontendDistPath)); 
+
+    // Para cualquier otra ruta GET que no sea de la API, servir el index.html
+    // Esto es crucial para el enrutamiento de React Router.
+    app.get('*', (req, res, next) => {
+        // Evita que la API y archivos de /uploads sean redirigidos al index.html
+        if (req.path.startsWith('/api') || req.path.startsWith('/uploads')) {
+            return next(); 
+        }
+        res.sendFile(path.resolve(frontendDistPath, 'index.html'));
+    });
+}
+// ====================================================================
+
+
 // Middleware para rutas no encontradas (404)
 app.use((req, res, next) => {
     res.status(404).json({ success: false, error: 'Ruta no encontrada' });
