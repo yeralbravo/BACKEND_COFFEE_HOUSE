@@ -9,7 +9,7 @@
     import rateLimit from 'express-rate-limit';
 
     // Importar conexión DB
-    import pool from './db.js';
+    import pool from './config/db.js';
 
     // Importaciones de Rutas
     import authRoutes from './routes/authRoutes.js';
