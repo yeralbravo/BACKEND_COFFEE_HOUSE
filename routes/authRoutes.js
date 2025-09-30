@@ -17,13 +17,32 @@ import { verifyToken } from '../middleware/authMiddleware.js';
 dotenv.config();
 const router = express.Router();
 
+// ------------------- REGISTRO -------------------
 router.post('/register',
   [
-    body('nombre').trim().notEmpty().withMessage('El nombre es un campo obligatorio.').isLength({ max: 50 }).withMessage('El nombre no puede exceder 50 caracteres').matches(/^[a-zA-ZñÑáéíóúÁÉÍÓÚüÜ\s]+$/).withMessage('El nombre solo puede contener letras y espacios.'),
-    body('apellido').trim().notEmpty().withMessage('El apellido es un campo obligatorio.').isLength({ max: 50 }).withMessage('El apellido no puede exceder 50 caracteres').matches(/^[a-zA-ZñÑáéíóúÁÉÍÓÚüÜ\s]+$/).withMessage('El apellido solo puede contener letras y espacios.'),
-    body('telefono').notEmpty().withMessage('El teléfono es un campo obligatorio.').isNumeric().withMessage('El teléfono solo debe contener números.').isLength({ min: 10, max: 10 }).withMessage('El teléfono debe tener exactamente 10 dígitos.'),
-    body('correo').notEmpty().withMessage('El correo es un campo obligatorio.').isEmail().withMessage('El formato del correo no es válido.').normalizeEmail().isLength({ max: 100 }).withMessage('El correo no puede exceder 100 caracteres'),
-    body('contraseña').isLength({ min: 8 }).withMessage('La contraseña debe tener al menos 8 caracteres.').matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/).withMessage('La contraseña debe contener al menos una mayúscula, una minúscula, un número y un carácter especial'),
+    body('nombre')
+      .trim()
+      .notEmpty().withMessage('El nombre es un campo obligatorio.')
+      .isLength({ max: 50 }).withMessage('El nombre no puede exceder 50 caracteres')
+      .matches(/^[a-zA-ZñÑáéíóúÁÉÍÓÚüÜ\s]+$/).withMessage('El nombre solo puede contener letras y espacios.'),
+    body('apellido')
+      .trim()
+      .notEmpty().withMessage('El apellido es un campo obligatorio.')
+      .isLength({ max: 50 }).withMessage('El apellido no puede exceder 50 caracteres')
+      .matches(/^[a-zA-ZñÑáéíóúÁÉÍÓÚüÜ\s]+$/).withMessage('El apellido solo puede contener letras y espacios.'),
+    body('telefono')
+      .notEmpty().withMessage('El teléfono es un campo obligatorio.')
+      .isNumeric().withMessage('El teléfono solo debe contener números.')
+      .isLength({ min: 10, max: 10 }).withMessage('El teléfono debe tener exactamente 10 dígitos.'),
+    body('correo')
+      .notEmpty().withMessage('El correo es un campo obligatorio.')
+      .isEmail().withMessage('El formato del correo no es válido.')
+      .normalizeEmail()
+      .isLength({ max: 100 }).withMessage('El correo no puede exceder 100 caracteres'),
+    body('contraseña')
+      .isLength({ min: 8 }).withMessage('La contraseña debe tener al menos 8 caracteres.')
+      .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/)
+      .withMessage('La contraseña debe contener al menos una mayúscula, una minúscula, un número y un carácter especial'),
     body('confirmarContraseña').custom((value, { req }) => {
       if (value !== req.body.contraseña) {
         throw new Error('Las contraseñas no coinciden. Por favor, verifica.');
@@ -37,15 +56,33 @@ router.post('/register',
       const firstError = errors.array({ onlyFirstError: true })[0].msg;
       return res.status(400).json({ success: false, error: firstError });
     }
+
     const { nombre, apellido, telefono, correo, contraseña } = req.body;
+
     try {
       const emailExists = await findUserByEmail(correo);
-      if (emailExists) return res.status(409).json({ success: false, error: 'El correo electrónico ya está registrado.' });
+      if (emailExists) {
+        return res.status(409).json({ success: false, error: 'El correo electrónico ya está registrado.' });
+      }
+
       const phoneExists = await findUserByPhone(telefono);
-      if (phoneExists) return res.status(409).json({ success: false, error: 'El número de teléfono ya está registrado.' });
-      const role = correo === process.env.ADMIN_EMAIL ? 'admin' : 'client';
-      await createUser(nombre, apellido, telefono, correo, contraseña, role);
-      res.status(201).json({ success: true, message: '✅ Usuario registrado exitosamente' });
+      if (phoneExists) {
+        return res.status(409).json({ success: false, error: 'El número de teléfono ya está registrado.' });
+      }
+
+      // ------------------- ASIGNACIÓN DE ROL -------------------
+      const normalizedEmail = correo.trim().toLowerCase();
+      const adminEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
+
+      const role = (adminEmail && normalizedEmail === adminEmail) ? 'admin' : 'client';
+      // ---------------------------------------------------------
+
+      await createUser(nombre, apellido, telefono, normalizedEmail, contraseña, role);
+
+      res.status(201).json({ 
+        success: true, 
+        message: `✅ Usuario registrado exitosamente con rol: ${role}` 
+      });
     } catch (error) {
       console.error('Error al registrar usuario:', error);
       res.status(500).json({ success: false, error: '❌ Error interno al registrar usuario' });
@@ -53,6 +90,7 @@ router.post('/register',
   }
 );
 
+// ------------------- LOGIN -------------------
 router.post('/login',
   [
     body('correo').notEmpty().withMessage('Ingresa tú correo electrónico.').isEmail().withMessage('El formato del correo no es válido.'),
@@ -64,14 +102,24 @@ router.post('/login',
       const firstError = errors.array({ onlyFirstError: true })[0].msg;
       return res.status(400).json({ success: false, error: firstError });
     }
+
     const { correo, contraseña } = req.body;
+
     try {
       const user = await loginUser(correo);
       const genericErrorMessage = 'El correo o la contraseña no coinciden. Por favor, verifica tus datos.';
+
       if (!user) return res.status(401).json({ success: false, error: genericErrorMessage });
+
       const passwordMatch = await bcrypt.compare(contraseña, user.contraseña);
       if (!passwordMatch) return res.status(401).json({ success: false, error: genericErrorMessage });
-      const token = jwt.sign({ id: user.id, nombre: user.nombre, apellido: user.apellido, role: user.role }, process.env.JWT_SECRET_KEY, { expiresIn: '7d' });
+
+      const token = jwt.sign(
+        { id: user.id, nombre: user.nombre, apellido: user.apellido, role: user.role },
+        process.env.JWT_SECRET_KEY,
+        { expiresIn: '7d' }
+      );
+
       res.status(200).json({ success: true, data: { token } });
     } catch (error) {
       console.error('Error al iniciar sesión:', error);
@@ -80,6 +128,7 @@ router.post('/login',
   }
 );
 
+// ------------------- PERFIL DEL USUARIO -------------------
 router.get('/me', verifyToken, async (req, res) => {
   try {
     const user = await findUserById(req.user.id);
@@ -91,6 +140,7 @@ router.get('/me', verifyToken, async (req, res) => {
   }
 });
 
+// ------------------- RECUPERAR CONTRASEÑA -------------------
 router.post('/forgot-password', 
   [ body('email').isEmail().withMessage('Por favor, introduce un correo válido.') ], 
   async (req, res) => {
@@ -112,6 +162,7 @@ router.post('/forgot-password',
     }
 });
 
+// ------------------- RESETEAR CONTRASEÑA -------------------
 router.post('/reset-password-with-code',
   [
     body('email').isEmail().withMessage('El correo es inválido.'),
