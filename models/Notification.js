@@ -14,17 +14,19 @@ export const createNotification = async (userId, message, linkUrl = null) => {
 
 export const findNotificationsByUserId = async (userId) => {
     try {
-        // Establece el idioma a español para los nombres de los meses
+        // Establece el idioma a español (si el server lo soporta)
         await db.query("SET lc_time_names = 'es_ES'");
 
-        // === CORRECCIÓN DE LA SINTAXIS DE DATE_FORMAT ===
-        // Se utilizan barras invertidas (\) para escapar el texto literal "de" y evitar el error "Unknown column".
-        // Los signos de porcentaje (%) siguen el formato MySQL.
+        // ✅ CORRECCIÓN: quitar barras invertidas y poner 'de' como literal
         const [notifications] = await db.query(
-            'SELECT id, message, link_url, is_read, created_at, DATE_FORMAT(created_at, "%d \\de %M \\de %Y") as formatted_date FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 20',
+            `SELECT id, message, link_url, is_read, created_at,
+             DATE_FORMAT(created_at, '%d de %M de %Y') as formatted_date
+             FROM notifications
+             WHERE user_id = ?
+             ORDER BY created_at DESC
+             LIMIT 20`,
             [userId]
         );
-        // ===============================================
 
         return notifications;
     } catch (error) {
