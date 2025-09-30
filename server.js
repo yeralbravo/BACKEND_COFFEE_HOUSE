@@ -1,4 +1,3 @@
-    // server.js
     import express from 'express';
     import cors from 'cors';
     import bodyParser from 'body-parser';
@@ -9,7 +8,7 @@
     import rateLimit from 'express-rate-limit';
 
     // Importar conexión DB
-    import pool from './config/db.js';
+    import pool from './db.js';
 
     // Importaciones de Rutas
     import authRoutes from './routes/authRoutes.js';
@@ -48,11 +47,11 @@
     // ====================================================================
     // 💡 CONFIGURACIÓN DE CORS
     // ====================================================================
+
     const allowedOrigins = [
     'http://localhost:5173',
-    'https://frontend-coffee-house.onrender.com', 
-    'http://coffeehouse25.s3-website.us-east-2.amazonaws.com',
-    process.env.FRONTEND_URL 
+    'https://frontend-coffee-house.onrender.com',
+    process.env.FRONTEND_URL, // opcional si la defines en Render
     ].filter(Boolean);
 
     const corsOptions = {
@@ -60,15 +59,22 @@
         if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
         } else {
-        console.warn(`CORS RECHAZADO: Origen no permitido: ${origin}`);
+        console.warn(`CORS RECHAZADO: ${origin}`);
         callback(new Error('No permitido por CORS'));
         }
     },
+    credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: true,
     };
+
     app.use(cors(corsOptions));
+    // Manejo de preflight requests
+    app.options('*', cors(corsOptions));
+
+    // ====================================================================
+    // FIN CONFIGURACIÓN DE CORS
+    // ====================================================================
 
     app.use(helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" },
