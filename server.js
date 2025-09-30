@@ -23,8 +23,8 @@ import contactRoutes from './routes/contactRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import cartRoutes from './routes/cartRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
-import addressRoutes from './routes/addressRoutes.js'; // Importación añadida/mantenida
-import itemRoutes from './routes/itemRoutes.js';       // Importación añadida/mantenida
+import addressRoutes from './routes/addressRoutes.js';
+import itemRoutes from './routes/itemRoutes.js';
 
 dotenv.config();
 
@@ -45,25 +45,27 @@ const app = express();
 // 💡 CONFIGURACIÓN DE CORS ADAPTADA
 // ====================================================================
 
-// Orígenes permitidos (incluyendo los de Render y la variable de entorno)
+// Construye la lista de orígenes a partir de una lista base y la variable de entorno.
+// Se usa un array simple y Filter para evitar valores nulos (undefined) si la variable FRONTEND_URL no está.
 const allowedOrigins = [
-    // Origen de desarrollo local
     'http://localhost:5173',
-    // Origen del frontend desplegado en Render (Ejemplo)
+    // La URL de Render de tu Static Site (CLAVE)
     'https://frontend-coffee-house.onrender.com', 
-    
-    // Variable de entorno (se recomienda usar esta en Render)
-    process.env.FRONTEND_URL,
-    // Origen alternativo de despliegue si existe (ej. S3)
-    'http://coffeehouse25.s3-website.us-east-2.amazonaws.com'
-];
+    // La URL alternativa (si es necesaria)
+    'http://coffeehouse25.s3-website.us-east-2.amazonaws.com',
+    // Carga la variable de entorno definida en Render
+    process.env.FRONTEND_URL 
+].filter(Boolean); // Elimina entradas nulas si FRONTEND_URL no está definida
 
 const corsOptions = {
     origin: (origin, callback) => {
-        // Si no hay origen (ej. curl o cliente REST), o si el origen está en la lista de permitidos
+        // Si no hay origen (ej. curl o cliente REST), permitir.
+        // Si el origen está en la lista de permitidos, permitir.
         if (!origin || allowedOrigins.includes(origin)) {
             callback(null, true);
         } else {
+            // Loguea el origen rechazado para debug
+            console.warn(`CORS RECHAZADO: Origen no permitido: ${origin}`);
             callback(new Error('No permitido por CORS'));
         }
     },
@@ -102,8 +104,8 @@ app.use('/api/contact', contactRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/payment', paymentRoutes);
-app.use('/api/addresses', addressRoutes); // Ruta añadida/mantenida
-app.use('/api/items', itemRoutes);       // Ruta añadida/mantenida
+app.use('/api/addresses', addressRoutes);
+app.use('/api/items', itemRoutes);
 
 // Middleware para rutas no encontradas (404)
 app.use((req, res, next) => {
